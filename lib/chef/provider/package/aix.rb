@@ -34,47 +34,47 @@ class Chef
         def define_resource_requirements
           super
           requirements.assert(:install) do |a|
-            a.assertion { @new_resource.source }
-            a.failure_message Chef::Exceptions::Package, "Source for package #{@new_resource.name} required for action install"
+            a.assertion { new_resource.source }
+            a.failure_message Chef::Exceptions::Package, "Source for package #{new_resource.name} required for action install"
           end
           requirements.assert(:all_actions) do |a|
-            a.assertion { !@new_resource.source || @package_source_found }
-            a.failure_message Chef::Exceptions::Package, "Package #{@new_resource.name} not found: #{@new_resource.source}"
-            a.whyrun "would assume #{@new_resource.source} would be have previously been made available"
+            a.assertion { !new_resource.source || @package_source_found }
+            a.failure_message Chef::Exceptions::Package, "Package #{new_resource.name} not found: #{new_resource.source}"
+            a.whyrun "would assume #{new_resource.source} would be have previously been made available"
           end
         end
 
         def load_current_resource
-          @current_resource = Chef::Resource::Package.new(@new_resource.name)
-          @current_resource.package_name(@new_resource.package_name)
+          @current_resource = Chef::Resource::Package.new(new_resource.name)
+          @current_resource.package_name(new_resource.package_name)
 
-          if @new_resource.source
-            @package_source_found = ::File.exists?(@new_resource.source)
+          if new_resource.source
+            @package_source_found = ::File.exists?(new_resource.source)
             if @package_source_found
-              Chef::Log.debug("#{@new_resource} checking pkg status")
-              ret = shell_out_with_timeout("installp -L -d #{@new_resource.source}")
+              Chef::Log.debug("#{new_resource} checking pkg status")
+              ret = shell_out_with_timeout("installp -L -d #{new_resource.source}")
               ret.stdout.each_line do |line|
                 case line
-                when /:#{@new_resource.package_name}:/
+                when /:#{new_resource.package_name}:/
                   fields = line.split(":")
-                  @new_resource.version(fields[2])
-                when /^#{@new_resource.package_name}:/
+                  new_resource.version(fields[2])
+                when /^#{new_resource.package_name}:/
                   Chef::Log.warn("You are installing a bff package by product name. For idempotent installs, please install individual filesets")
                   fields = line.split(":")
-                  @new_resource.version(fields[2])
+                  new_resource.version(fields[2])
                 end
               end
-              raise Chef::Exceptions::Package, "package source #{@new_resource.source} does not provide package #{@new_resource.package_name}" unless @new_resource.version
+              raise Chef::Exceptions::Package, "package source #{new_resource.source} does not provide package #{new_resource.package_name}" unless new_resource.version
             end
           end
 
-          Chef::Log.debug("#{@new_resource} checking install state")
+          Chef::Log.debug("#{new_resource} checking install state")
           ret = shell_out_with_timeout("lslpp -lcq #{@current_resource.package_name}")
           ret.stdout.each_line do |line|
             case line
             when /#{@current_resource.package_name}/
               fields = line.split(":")
-              Chef::Log.debug("#{@new_resource} version #{fields[2]} is already installed")
+              Chef::Log.debug("#{new_resource} version #{fields[2]} is already installed")
               @current_resource.version(fields[2])
             end
           end
@@ -88,18 +88,18 @@ class Chef
 
         def candidate_version
           return @candidate_version if @candidate_version
-          ret = shell_out_with_timeout("installp -L -d #{@new_resource.source}")
+          ret = shell_out_with_timeout("installp -L -d #{new_resource.source}")
           ret.stdout.each_line do |line|
             case line
-            when /\w:#{Regexp.escape(@new_resource.package_name)}:(.*)/
+            when /\w:#{Regexp.escape(new_resource.package_name)}:(.*)/
               fields = line.split(":")
               @candidate_version = fields[2]
-              @new_resource.version(fields[2])
-              Chef::Log.debug("#{@new_resource} setting install candidate version to #{@candidate_version}")
+              new_resource.version(fields[2])
+              Chef::Log.debug("#{new_resource} setting install candidate version to #{@candidate_version}")
             end
           end
           unless ret.exitstatus == 0
-            raise Chef::Exceptions::Package, "installp -L -d #{@new_resource.source} - #{ret.format_for_exception}!"
+            raise Chef::Exceptions::Package, "installp -L -d #{new_resource.source} - #{ret.format_for_exception}!"
           end
           @candidate_version
         end
@@ -112,25 +112,25 @@ class Chef
         # So far, the code has been tested only with standalone packages.
         #
         def install_package(name, version)
-          Chef::Log.debug("#{@new_resource} package install options: #{@new_resource.options}")
-          if @new_resource.options.nil?
-            shell_out_with_timeout!( "installp -aYF -d #{@new_resource.source} #{@new_resource.package_name}" )
-            Chef::Log.debug("#{@new_resource} installed version #{@new_resource.version} from: #{@new_resource.source}")
+          Chef::Log.debug("#{new_resource} package install options: #{new_resource.options}")
+          if new_resource.options.nil?
+            shell_out_with_timeout!( "installp -aYF -d #{new_resource.source} #{new_resource.package_name}" )
+            Chef::Log.debug("#{new_resource} installed version #{new_resource.version} from: #{new_resource.source}")
           else
-            shell_out_with_timeout!( "installp -aYF #{expand_options(@new_resource.options)} -d #{@new_resource.source} #{@new_resource.package_name}" )
-            Chef::Log.debug("#{@new_resource} installed version #{@new_resource.version} from: #{@new_resource.source}")
+            shell_out_with_timeout!( "installp -aYF #{expand_options(new_resource.options)} -d #{new_resource.source} #{new_resource.package_name}" )
+            Chef::Log.debug("#{new_resource} installed version #{new_resource.version} from: #{new_resource.source}")
           end
         end
 
         alias_method :upgrade_package, :install_package
 
         def remove_package(name, version)
-          if @new_resource.options.nil?
+          if new_resource.options.nil?
             shell_out_with_timeout!( "installp -u #{name}" )
-            Chef::Log.debug("#{@new_resource} removed version #{@new_resource.version}")
+            Chef::Log.debug("#{new_resource} removed version #{new_resource.version}")
           else
-            shell_out_with_timeout!( "installp -u #{expand_options(@new_resource.options)} #{name}" )
-            Chef::Log.debug("#{@new_resource} removed version #{@new_resource.version}")
+            shell_out_with_timeout!( "installp -u #{expand_options(new_resource.options)} #{name}" )
+            Chef::Log.debug("#{new_resource} removed version #{new_resource.version}")
           end
         end
 
