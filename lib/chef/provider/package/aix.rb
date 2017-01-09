@@ -49,7 +49,7 @@ class Chef
           current_resource.package_name(new_resource.package_name)
 
           if new_resource.source
-            @package_source_found = ::File.exists?(new_resource.source)
+            @package_source_found = ::File.exist?(new_resource.source)
             if @package_source_found
               Chef::Log.debug("#{new_resource} checking pkg status")
               ret = shell_out_with_timeout("installp -L -d #{new_resource.source}")
@@ -122,7 +122,7 @@ class Chef
           end
         end
 
-        alias_method :upgrade_package, :install_package
+        alias upgrade_package install_package
 
         def remove_package(name, version)
           if new_resource.options.nil?
